@@ -204,4 +204,26 @@ contract LiquidationAccountingFixTest is Test {
         vm.expectRevert(GovernanceActions.InvalidParams.selector);
         _startLiquidation(_erc20Asset(address(assetToken)));
     }
+    function test_standingERC20ApprovalCanDrainLiquidationAssets() public {
+        _mint(bob, 100e18);
+        assetToken.mint(address(venture), 1000e18);
+
+        vm.prank(address(executor));
+        venture.setAllowance(address(assetToken), spender, type(uint256).max);
+
+        _startLiquidation(_erc20Asset(address(assetToken)));
+
+        assertEq(liquidator.totalSupplySnapshot(), 100e18);
+
+        vm.prank(spender);
+        assetToken.transferFrom(address(venture), spender, 600e18);
+
+        assertEq(assetToken.balanceOf(address(venture)), 400e18);
+        assertEq(assetToken.balanceOf(spender), 600e18);
+
+        vm.prank(bob);
+        vm.expectRevert();
+        liquidator.claim();
+    }
+
 }
